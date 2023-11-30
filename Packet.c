@@ -1,12 +1,12 @@
-/*  C ¾ð¾î·Î ÀÛ¼ºµÈ ÆÐÅ¶ Ä¸Ã³ ÇÁ·Î±×·¥ÀÔ´Ï´Ù.
-      - ICMP, DNS, HTTP, SSH 4Á¾ ÇÁ·ÎÅäÄÝ Àü¿ëÀÔ´Ï´Ù.
-      - raw socketÀ» ÅëÇØ Network Device·ÎºÎÅÍ ÆÐÅ¶ or µ¥ÀÌÅÍ¸¦ ¼ö½ÅÇÕ´Ï´Ù.
-      - ¸®´ª½º ¿î¿µÃ¼Á¦¸¦ ±â¹ÝÀ¸·Î ÀÛµ¿ÇÕ´Ï´Ù.
+/*  C ì–¸ì–´ë¡œ ìž‘ì„±ëœ íŒ¨í‚· ìº¡ì²˜ í”„ë¡œê·¸ëž¨ìž…ë‹ˆë‹¤.
+      - ICMP, DNS, HTTP, SSH 4ì¢… í”„ë¡œí† ì½œ ì „ìš©ìž…ë‹ˆë‹¤.
+      - raw socketì„ í†µí•´ Network Deviceë¡œë¶€í„° íŒ¨í‚· or ë°ì´í„°ë¥¼ ìˆ˜ì‹ í•©ë‹ˆë‹¤.
+      - ë¦¬ëˆ…ìŠ¤ ìš´ì˜ì²´ì œë¥¼ ê¸°ë°˜ìœ¼ë¡œ ìž‘ë™í•©ë‹ˆë‹¤.
 
-    Network Æ®·¡ÇÈÀ» °¨ÁöÇÏ°í Æ¯Á¤ ÇÁ·ÎÅäÄÝ¿¡ ´ëÇÑ ¼¼ºÎ Á¤º¸¸¦ ·Î±× ÆÄÀÏ¿¡ ÀúÀåÇÏ´Â ±â´ÉÀ» °¡Áö°í ÀÖ½À´Ï´Ù.
+    Network íŠ¸ëž˜í”½ì„ ê°ì§€í•˜ê³  íŠ¹ì • í”„ë¡œí† ì½œì— ëŒ€í•œ ì„¸ë¶€ ì •ë³´ë¥¼ ë¡œê·¸ íŒŒì¼ì— ì €ìž¥í•˜ëŠ” ê¸°ëŠ¥ì„ ê°€ì§€ê³  ìžˆìŠµë‹ˆë‹¤.
 */
 
-// Çì´õÆÄÀÏ Á¤ÀÇ
+// í—¤ë”íŒŒì¼ ì •ì˜
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,53 +21,54 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 
-// Ä¸ÃÄµÈ ÆÐÅ¶À» ÀúÀåÇÏ´Âµ¥ »ç¿ëµÇ´Â ¹öÆÛÀÇ Å©±â¸¦ 65536À¸·Î Á¤ÀÇ
+// ìº¡ì³ëœ íŒ¨í‚·ì„ ì €ìž¥í•˜ëŠ”ë° ì‚¬ìš©ë˜ëŠ” ë²„í¼ì˜ í¬ê¸°ë¥¼ 65536ìœ¼ë¡œ ì •ì˜
 #define BUFFER_SIZE 65536
 
-//Àü¿ªº¯¼ö Á¤ÀÇ
-FILE* logfile;                          // Ä¸ÃÄµÈ ÆÐÅ¶ Á¤º¸¸¦ ·Î±× ÆÄÀÏ¿¡ ¾²±â À§ÇÑ ÆÄÀÏ Æ÷ÀÎÅÍ
-int sock_raw;                           // raw socketÀÇ socket discriptor
-struct sockaddr_in source, dest;        // ¼Û½ÅÁö¿Í ¼ö½ÅÁöÀÇ IP ÁÖ¼Ò¸¦ ÀúÀåÇÏ±â À§ÇÑ ±¸Á¶Ã¼
+//ì „ì—­ë³€ìˆ˜ ì •ì˜
+FILE* logfile;                          // ìº¡ì³ëœ íŒ¨í‚· ì •ë³´ë¥¼ ë¡œê·¸ íŒŒì¼ì— ì“°ê¸° ìœ„í•œ íŒŒì¼ í¬ì¸í„°
+int sock_raw;                           // raw socketì˜ socket discriptor
+struct sockaddr_in source, dest;        // ì†¡ì‹ ì§€ì™€ ìˆ˜ì‹ ì§€ì˜ IP ì£¼ì†Œë¥¼ ì €ìž¥í•˜ê¸° ìœ„í•œ êµ¬ì¡°ì²´
 int myflag = 0;
 
-void ProcessPacket(unsigned char*, int, char*);     // ÆÐÅ¶À» Ã³¸®ÇÏ°í 4Á¾ ÇÁ·ÎÅäÄÝ(ICMP, DNS, HTTP, SSH)¿¡ ¸Â´Â ÇÔ¼ö¸¦ È£ÃâÇÏ´Â ÇÔ¼ö
-void LogIcmpPacket(unsigned char*, int, char*);     // ICMP ÆÐÅ¶ ¼¼ºÎ Á¤º¸¸¦ ±â·ÏÇÏ´Â ÇÔ¼ö
-void LogDnsPacket(unsigned char*, int, char*);      // DNS ÆÐÅ¶ ¼¼ºÎ Á¤º¸¸¦ ±â·ÏÇÏ´Â ÇÔ¼ö
-void LogHttpPacket(unsigned char*, int, char*);     // HTTP ÆÐÅ¶ ¼¼ºÎ Á¤º¸¸¦ ±â·ÏÇÏ´Â ÇÔ¼ö
-void LogSshPacket(unsigned char*, int, char*);      // SSH ÆÐÅ¶ ¼¼ºÎ Á¤º¸¸¦ ±â·ÏÇÏ´Â ÇÔ¼ö
-void LogIpHeader(unsigned char*, int, char*);       // IP Çì´õ ¼¼ºÎ Á¤º¸¸¦ ±â·ÏÇÏ´Â ÇÔ¼ö
-void LogData(unsigned char*, int);                  // µ¥ÀÌÅÍ ÆäÀÌ·Îµå ¼¼ºÎ Á¤º¸¸¦ ±â·ÏÇÏ´Â ÇÔ¼ö
+void ProcessPacket(unsigned char*, int, char*);     // íŒ¨í‚·ì„ ì²˜ë¦¬í•˜ê³  4ì¢… í”„ë¡œí† ì½œ(ICMP, DNS, HTTP, SSH)ì— ë§žëŠ” í•¨ìˆ˜ë¥¼ í˜¸ì¶œí•˜ëŠ” í•¨ìˆ˜
+void LogIcmpPacket(unsigned char*, int, char*);     // ICMP íŒ¨í‚· ì„¸ë¶€ ì •ë³´ë¥¼ ê¸°ë¡í•˜ëŠ” í•¨ìˆ˜
+void LogDnsPacket(unsigned char*, int, char*);      // DNS íŒ¨í‚· ì„¸ë¶€ ì •ë³´ë¥¼ ê¸°ë¡í•˜ëŠ” í•¨ìˆ˜
+void LogHttpPacket(unsigned char*, int, char*);     // HTTP íŒ¨í‚· ì„¸ë¶€ ì •ë³´ë¥¼ ê¸°ë¡í•˜ëŠ” í•¨ìˆ˜
+void LogSshPacket(unsigned char*, int, char*);      // SSH íŒ¨í‚· ì„¸ë¶€ ì •ë³´ë¥¼ ê¸°ë¡í•˜ëŠ” í•¨ìˆ˜
+void LogIpHeader(unsigned char*, int, char*);       // IP í—¤ë” ì„¸ë¶€ ì •ë³´ë¥¼ ê¸°ë¡í•˜ëŠ” í•¨ìˆ˜
+void LogData(unsigned char*, int);                  // ë°ì´í„° íŽ˜ì´ë¡œë“œ ì„¸ë¶€ ì •ë³´ë¥¼ ê¸°ë¡í•˜ëŠ” í•¨ìˆ˜
 
 
 
-// ÆÐÅ¶À» Ã³¸®ÇÏ°í 4Á¾ ÇÁ·ÎÅäÄÝ(ICMP, DNS, HTTP, SSH)¿¡ ¸Â´Â ÇÔ¼ö¸¦ È£ÃâÇÏ´Â ÇÔ¼ö
+// íŒ¨í‚·ì„ ì²˜ë¦¬í•˜ê³  4ì¢… í”„ë¡œí† ì½œ(ICMP, DNS, HTTP, SSH)ì— ë§žëŠ” í•¨ìˆ˜ë¥¼ í˜¸ì¶œí•˜ëŠ” í•¨ìˆ˜
 void ProcessPacket(unsigned char* buffer, int size, char* pip_so)
 {
     struct iphdr* iph = (struct iphdr*)(buffer + sizeof(struct ethhdr));
-
+    struct tcphdr* tcph = NULL;
+      
     switch (iph->protocol) {
-    // ICMP´Â 1¹ø Æ÷Æ®¸¦ ÀÌ¿ëÇÑ´Ù
+    // ICMPëŠ” 1ë²ˆ í¬íŠ¸ë¥¼ ì´ìš©í•œë‹¤
     case 1:     
         LogIcmpPacket(buffer, size, pip_so);
         printf("ICMP Packet Captured\t");
         break;
-    // TCP´Â 6¹ø Æ÷Æ®¸¦ ÀÌ¿ëÇÑ´Ù
+    // TCPëŠ” 6ë²ˆ í¬íŠ¸ë¥¼ ì´ìš©í•œë‹¤
     case 6:
-        // TCP¸¦ »ç¿ëÇÏ´Â HTTP´Â 80¹ø Æ÷Æ®¸¦ ÀÌ¿ëÇÑ´Ù
-        struct tcphdr* tcph = (struct tcphdr*)(buffer + sizeof(struct ethhdr) + iph->ihl * 4);
+        // TCPë¥¼ ì‚¬ìš©í•˜ëŠ” HTTPëŠ” 80ë²ˆ í¬íŠ¸ë¥¼ ì´ìš©í•œë‹¤
+        tcph = (struct tcphdr*)(buffer + sizeof(struct ethhdr) + iph->ihl * 4);
         if (ntohs(tcph->source) == 80 || ntohs(tcph->dest) == 80) {
             LogHttpPacket(buffer, size, pip_so);
             printf("HTTP Packet Captured\t");
         }
 
-        // TCP¸¦ »ç¿ëÇÏ´Â SSH ProtocolÀº 22¹ø Æ÷Æ®¸¦ ÀÌ¿ëÇÑ´Ù
+        // TCPë¥¼ ì‚¬ìš©í•˜ëŠ” SSH Protocolì€ 22ë²ˆ í¬íŠ¸ë¥¼ ì´ìš©í•œë‹¤
         if (ntohs(tcph->source) == 22 || ntohs(tcph->dest) == 22) {
             LogSshPacket(buffer, size, pip_so);
             printf("SSH Packet Captured\t");
         }
         break;
 
-    //DNS ProtocolÀº 17¹ø Æ÷Æ®¸¦ ÀÌ¿ëÇÑ´Ù
+    //DNS Protocolì€ 17ë²ˆ í¬íŠ¸ë¥¼ ì´ìš©í•œë‹¤
     case 17:
         LogDnsPacket(buffer, size, pip_so);
         printf("DNS Packet Captured\t");
@@ -77,19 +78,19 @@ void ProcessPacket(unsigned char* buffer, int size, char* pip_so)
     }
 }
 
-// ICMP ÆÐÅ¶ ¼¼ºÎ Á¤º¸¸¦ ±â·ÏÇÏ´Â ÇÔ¼ö
+// ICMP íŒ¨í‚· ì„¸ë¶€ ì •ë³´ë¥¼ ê¸°ë¡í•˜ëŠ” í•¨ìˆ˜
 void LogIcmpPacket(unsigned char* buffer, int size, char* pip_so)
 {
-    // IP Çì´õ¿¡¼­ ICMP Çì´õ·Î ÀÌµ¿
+    // IP í—¤ë”ì—ì„œ ICMP í—¤ë”ë¡œ ì´ë™
     struct iphdr* iph = (struct iphdr*)(buffer + sizeof(struct ethhdr));
     unsigned short iphdrlen = iph->ihl * 4;
 
     struct icmphdr* icmph = (struct icmphdr*)(buffer + iphdrlen + sizeof(struct ethhdr));
 
-    // ICMP ÆÐÅ¶ Çì´õÀÇ Å©±â
+    // ICMP íŒ¨í‚· í—¤ë”ì˜ í¬ê¸°
     int header_size = sizeof(struct ethhdr) + iphdrlen + sizeof(struct icmphdr);
 
-    // ICMP ÆÐÅ¶ ºÐ¼® Á¤º¸ ·Î±ë ½ÃÀÛ
+    // ICMP íŒ¨í‚· ë¶„ì„ ì •ë³´ ë¡œê¹… ì‹œìž‘
     fprintf(logfile, "\n\n- - - - - - - - - - - ICMP Packet - - - - - - - - - - - - \n");
 
     LogIpHeader(buffer, size, pip_so);
@@ -101,60 +102,60 @@ void LogIcmpPacket(unsigned char* buffer, int size, char* pip_so)
     fprintf(logfile, " + Identifier           : %u\n", ntohs(icmph->un.echo.id));
     fprintf(logfile, " | Sequence Number      : %u\n", ntohs(icmph->un.echo.sequence));
 
-    // IP Çì´õ µ¥ÀÌÅÍ ·Î±ë
+    // IP í—¤ë” ë°ì´í„° ë¡œê¹…
     fprintf(logfile, "\n");
     fprintf(logfile, "IP Header\n");
     LogData(buffer, iphdrlen);
 
-    // ICMP Çì´õ µ¥ÀÌÅÍ ·Î±ë 
+    // ICMP í—¤ë” ë°ì´í„° ë¡œê¹… 
     fprintf(logfile, "\nICMP Header\n");
     LogData(buffer + iphdrlen, sizeof(struct icmphdr));
 
-    // ICMP µ¥ÀÌÅÍ ÆäÀÌ·Îµå ·Î±ë
+    // ICMP ë°ì´í„° íŽ˜ì´ë¡œë“œ ë¡œê¹…
     fprintf(logfile, "\nData Payload\n");
     LogData(buffer + header_size, size - header_size);
 
-    // ICMP ÆÐÅ¶ ·Î±ë Á¾·á
+    // ICMP íŒ¨í‚· ë¡œê¹… ì¢…ë£Œ
     fprintf(logfile, "\n- - - - - - - - - - - - - - - - - - - - - -");
 }
 
-// DNS Protocol Çì´õ Á¤º¸¸¦ ÀúÀåÇÏ´Â ±¸Á¶Ã¼
+// DNS Protocol í—¤ë” ì •ë³´ë¥¼ ì €ìž¥í•˜ëŠ” êµ¬ì¡°ì²´
 struct dnshdr {
-    uint16_t id;                // DNS Protocol ÆÐÅ¶ ½Äº°ÀÚ (Identification)
-    uint16_t flags;             // DNS Flags - ¿©·¯°¡Áö Á¦¾î Á¤º¸¸¦ ´ã°í ÀÖÀ½
-    uint16_t questions;         // DNS ÁúÀÇÀÇ °³¼ö 
-    uint16_t answer_rrs;        // DNS ÀÀ´ä ·¹ÄÚµåÀÇ °³¼ö
-    uint16_t authority_rrs;     // DNS ±ÇÇÑ ·¹ÄÚµåÀÇ °³¼ö
-    uint16_t additional_rrs;    // DNS Ãß°¡ ·¹ÄÚµåÀÇ °³¼ö
+    uint16_t id;                // DNS Protocol íŒ¨í‚· ì‹ë³„ìž (Identification)
+    uint16_t flags;             // DNS Flags - ì—¬ëŸ¬ê°€ì§€ ì œì–´ ì •ë³´ë¥¼ ë‹´ê³  ìžˆìŒ
+    uint16_t questions;         // DNS ì§ˆì˜ì˜ ê°œìˆ˜ 
+    uint16_t answer_rrs;        // DNS ì‘ë‹µ ë ˆì½”ë“œì˜ ê°œìˆ˜
+    uint16_t authority_rrs;     // DNS ê¶Œí•œ ë ˆì½”ë“œì˜ ê°œìˆ˜
+    uint16_t additional_rrs;    // DNS ì¶”ê°€ ë ˆì½”ë“œì˜ ê°œìˆ˜
 };
 
-// DNS Protocol ÆÐÅ¶ ¼¼ºÎ Á¤º¸¸¦ ±â·ÏÇÏ´Â ÇÔ¼ö
+// DNS Protocol íŒ¨í‚· ì„¸ë¶€ ì •ë³´ë¥¼ ê¸°ë¡í•˜ëŠ” í•¨ìˆ˜
 void LogDnsPacket(unsigned char* buffer, int size, char* pip_so)
 {
-    // IP Çì´õ Á¤º¸¸¦ ÀÐ¾î¿È
+    // IP í—¤ë” ì •ë³´ë¥¼ ì½ì–´ì˜´
     struct iphdr* iph = (struct iphdr*)(buffer + sizeof(struct ethhdr));
     unsigned short iphdrlen = iph->ihl * 4;
 
-    // UDP Çì´õ Á¤º¸¸¦ ÀÐ¾î¿È
+    // UDP í—¤ë” ì •ë³´ë¥¼ ì½ì–´ì˜´
     struct udphdr* udph = (struct udphdr*)(buffer + iphdrlen + sizeof(struct ethhdr));
 
-    // Çì´õÀÇ ÀüÃ¼ Å©±â °è»ê (Ethernet Çì´õ + IP Çì´õ + UDP Çì´õ)
+    // í—¤ë”ì˜ ì „ì²´ í¬ê¸° ê³„ì‚° (Ethernet í—¤ë” + IP í—¤ë” + UDP í—¤ë”)
     int header_size = sizeof(struct ethhdr) + iphdrlen + sizeof(struct udphdr);
 
-    // DNS Protocol ÆÐÅ¶ ·Î±ë ½ÃÀÛ
+    // DNS Protocol íŒ¨í‚· ë¡œê¹… ì‹œìž‘
     fprintf(logfile, "\n\n- - - - - - - - - - - DNS Packet - - - - - - - - - - - - \n");
 
-    // IP Çì´õ Á¤º¸ ·Î±ë
+    // IP í—¤ë” ì •ë³´ ë¡œê¹…
     LogIpHeader(buffer, size, pip_so);
 
-    // UDP Çì´õ Á¤º¸ ·Î±ë
+    // UDP í—¤ë” ì •ë³´ ë¡œê¹…
     fprintf(logfile, "\nUDP Header\n");
     fprintf(logfile, " + Source Port          : %d\n", ntohs(udph->source));
     fprintf(logfile, " | Destination Port     : %d\n", ntohs(udph->dest));
     fprintf(logfile, " | UDP Length           : %d\n", ntohs(udph->len));
     fprintf(logfile, " + UDP Checksum         : %d\n", ntohs(udph->check));
 
-    // DNS Çì´õ Á¤º¸ ·Î±ë
+    // DNS í—¤ë” ì •ë³´ ë¡œê¹…
     fprintf(logfile, "\nDNS Header\n");
     struct dnshdr* dnsh = (struct dnshdr*)(buffer + header_size);
     fprintf(logfile, " + Transaction ID       : %d\n", ntohs(dnsh->id));
@@ -164,33 +165,33 @@ void LogDnsPacket(unsigned char* buffer, int size, char* pip_so)
     fprintf(logfile, " | Authority RRs        : %d\n", ntohs(dnsh->authority_rrs));
     fprintf(logfile, " + Additional RRs       : %d\n", ntohs(dnsh->additional_rrs));
 
-    // DNS µ¥ÀÌÅÍ ÆäÀÌ·Îµå ·Î±ë
+    // DNS ë°ì´í„° íŽ˜ì´ë¡œë“œ ë¡œê¹…
     fprintf(logfile, "\nData Payload\n");
     LogData(buffer + header_size + sizeof(struct dnshdr), size - header_size - sizeof(struct dnshdr));
 
-    // DNS ÆÐÅ¶ ·Î±ë Á¾·á
+    // DNS íŒ¨í‚· ë¡œê¹… ì¢…ë£Œ
     fprintf(logfile, "\n- - - - - - - - - - - - - - - - - - - - - -");
 }
 
-// IP Çì´õ ¼¼ºÎ Á¤º¸¸¦ ±â·ÏÇÏ´Â ÇÔ¼ö
+// IP í—¤ë” ì„¸ë¶€ ì •ë³´ë¥¼ ê¸°ë¡í•˜ëŠ” í•¨ìˆ˜
 void LogIpHeader(unsigned char* buffer, int size, char* pip_so)
 {
     unsigned short iphdrlen;
 
-    // IP Çì´õÀÇ ½ÃÀÛ À§Ä¡¸¦ °è»ê
+    // IP í—¤ë”ì˜ ì‹œìž‘ ìœ„ì¹˜ë¥¼ ê³„ì‚°
     struct iphdr* iph = (struct iphdr*)(buffer + sizeof(struct ethhdr));
     iphdrlen = iph->ihl * 4;
 
-    // ¼Û½ÅÁö IP ÁÖ¼Ò ÃÊ±âÈ­ ¹× ¼³Á¤
+    // ì†¡ì‹ ì§€ IP ì£¼ì†Œ ì´ˆê¸°í™” ë° ì„¤ì •
     memset(&source, 0, sizeof(source));
     iph->saddr = inet_addr(pip_so);
-    source.sin_addr.s_addr = iph->saddr;//ip¸¦ ¹Þ¾Æ¿Â´Ù.
+    source.sin_addr.s_addr = iph->saddr;//ipë¥¼ ë°›ì•„ì˜¨ë‹¤.
 
-    // ¸ñÀûÁö IP ÁÖ¼Ò ÃÊ±âÈ­ ¹× ¼³Á¤
+    // ëª©ì ì§€ IP ì£¼ì†Œ ì´ˆê¸°í™” ë° ì„¤ì •
     memset(&dest, 0, sizeof(dest));
     dest.sin_addr.s_addr = iph->daddr;
 
-    // IP Çì´õ Á¤º¸ ·Î±ë
+    // IP í—¤ë” ì •ë³´ ë¡œê¹…
     fprintf(logfile, "\n");
     fprintf(logfile, "IP Header\n");
     fprintf(logfile, " + IP Version          : %d\n", (unsigned int)iph->version);
@@ -204,13 +205,13 @@ void LogIpHeader(unsigned char* buffer, int size, char* pip_so)
     fprintf(logfile, " + Destination IP      : %s\n", inet_ntoa(dest.sin_addr));
 }
 
-// HTTP ÆÐÅ¶ Çì´õ Á¤º¸¸¦ ±â·ÏÇÏ´Â ÇÔ¼ö
+// HTTP íŒ¨í‚· í—¤ë” ì •ë³´ë¥¼ ê¸°ë¡í•˜ëŠ” í•¨ìˆ˜
 void LogHttpPacket(unsigned char* buffer, int size, char* pip_so)
 {
-    // HTTP ÆÐÅ¶ ·Î±ë ½ÃÀÛ
+    // HTTP íŒ¨í‚· ë¡œê¹… ì‹œìž‘
     fprintf(logfile, "\n\n- - - - - - - - - - - HTTP Packet - - - - - - - - - - - - \n");
 
-    // Ethernet Çì´õ Á¤º¸ ·Î±ë
+    // Ethernet í—¤ë” ì •ë³´ ë¡œê¹…
     struct ethhdr* eth = (struct ethhdr*)buffer;
     fprintf(logfile, "\nEthernet Header\n");
     fprintf(logfile, " + Source MAC: %.2X-%.2X-%.2X-%.2X-%.2X-%.2X\n",
@@ -221,7 +222,7 @@ void LogHttpPacket(unsigned char* buffer, int size, char* pip_so)
         eth->h_dest[3], eth->h_dest[4], eth->h_dest[5]);
     fprintf(logfile, " + Protocol: %u\n", (unsigned short)eth->h_proto);
 
-    // IP Çì´õ Á¤º¸ ·Î±ë
+    // IP í—¤ë” ì •ë³´ ë¡œê¹…
     struct iphdr* iph = (struct iphdr*)(buffer + sizeof(struct ethhdr));
     unsigned short iphdrlen = iph->ihl * 4;
     fprintf(logfile, "\nIP Header\n");
@@ -229,7 +230,7 @@ void LogHttpPacket(unsigned char* buffer, int size, char* pip_so)
     fprintf(logfile, " + Destination IP: %s\n", inet_ntoa(dest.sin_addr));
     fprintf(logfile, " + Protocol: %u\n", (unsigned int)iph->protocol);
     
-    // TCP Çì´õ Á¤º¸ ·Î±ë
+    // TCP í—¤ë” ì •ë³´ ë¡œê¹…
     struct tcphdr* tcph = (struct tcphdr*)(buffer + iphdrlen + sizeof(struct ethhdr));
     fprintf(logfile, "\nTCP Header\n");
     fprintf(logfile, " + Source Port: %u\n", ntohs(tcph->source));
@@ -241,21 +242,21 @@ void LogHttpPacket(unsigned char* buffer, int size, char* pip_so)
     fprintf(logfile, " + Finish Flag: %d\n", (unsigned int)tcph->fin);
     fprintf(logfile, " + Checksum: %d\n", ntohs(tcph->check));
     
-    // HTTP µ¥ÀÌÅÍ ÆäÀÌ·Îµå ·Î±ë
+    // HTTP ë°ì´í„° íŽ˜ì´ë¡œë“œ ë¡œê¹…
     fprintf(logfile, "\nData Payload\n");
     LogData(buffer + iphdrlen + sizeof(struct ethhdr) + sizeof(struct tcphdr), size - (iphdrlen + sizeof(struct ethhdr) + sizeof(struct tcphdr)));
 
-    // HTTP ÆÐÅ¶ ·Î±ë Á¾·á
+    // HTTP íŒ¨í‚· ë¡œê¹… ì¢…ë£Œ
     fprintf(logfile, "\n- - - - - - - - - - - - - - - - - - - - - -");
 }
 
-// SSH ÆÐÅ¶ Çì´õ Á¤º¸¸¦ ±â·ÏÇÏ´Â ÇÔ¼ö
+// SSH íŒ¨í‚· í—¤ë” ì •ë³´ë¥¼ ê¸°ë¡í•˜ëŠ” í•¨ìˆ˜
 void LogSshPacket(unsigned char* buffer, int size, char* pip_so)
 {
-    // SSH ÆÐÅ¶ ·Î±ë ½ÃÀÛ
+    // SSH íŒ¨í‚· ë¡œê¹… ì‹œìž‘
     fprintf(logfile, "\n\n- - - - - - - - - - - SSH Packet - - - - - - - - - - - - \n");
 
-    // Ethernet Çì´õ Á¤º¸ ·Î±ë
+    // Ethernet í—¤ë” ì •ë³´ ë¡œê¹…
     struct ethhdr* eth = (struct ethhdr*)buffer;
     fprintf(logfile, "\nEthernet Header\n");
     fprintf(logfile, " + Source MAC: %.2X-%.2X-%.2X-%.2X-%.2X-%.2X\n",
@@ -266,7 +267,7 @@ void LogSshPacket(unsigned char* buffer, int size, char* pip_so)
         eth->h_dest[3], eth->h_dest[4], eth->h_dest[5]);
     fprintf(logfile, " + Protocol: %u\n", (unsigned short)eth->h_proto);
 
-    // IP Çì´õ Á¤º¸ ·Î±ë
+    // IP í—¤ë” ì •ë³´ ë¡œê¹…
     struct iphdr* iph = (struct iphdr*)(buffer + sizeof(struct ethhdr));
     unsigned short iphdrlen = iph->ihl * 4;
     fprintf(logfile, "\nIP Header\n");
@@ -274,7 +275,7 @@ void LogSshPacket(unsigned char* buffer, int size, char* pip_so)
     fprintf(logfile, " + Destination IP: %s\n", inet_ntoa(dest.sin_addr));
     fprintf(logfile, " + Protocol: %u\n", (unsigned int)iph->protocol);
 
-    // TCP Çì´õ Á¤º¸ ·Î±ë
+    // TCP í—¤ë” ì •ë³´ ë¡œê¹…
     struct tcphdr* tcph = (struct tcphdr*)(buffer + iphdrlen + sizeof(struct ethhdr));
     fprintf(logfile, "\nTCP Header\n");
     fprintf(logfile, " + Source Port: %u\n", ntohs(tcph->source));
@@ -286,21 +287,21 @@ void LogSshPacket(unsigned char* buffer, int size, char* pip_so)
     fprintf(logfile, " + Finish Flag: %d\n", (unsigned int)tcph->fin);
     fprintf(logfile, " + Checksum: %d\n", ntohs(tcph->check));
 
-    // SSH µ¥ÀÌÅÍ ÆäÀÌ·Îµå ·Î±ë
+    // SSH ë°ì´í„° íŽ˜ì´ë¡œë“œ ë¡œê¹…
     fprintf(logfile, "\nData Payload\n");
     LogData(buffer + iphdrlen + sizeof(struct ethhdr) + sizeof(struct tcphdr), size - (iphdrlen + sizeof(struct ethhdr) + sizeof(struct tcphdr)));
 
-    // SSH ÆÐÅ¶ ·Î±ë Á¾·á
+    // SSH íŒ¨í‚· ë¡œê¹… ì¢…ë£Œ
     fprintf(logfile, "\n- - - - - - - - - - - - - - - - - - - - - -");
 }
 
-// µ¥ÀÌÅÍ ÆäÀÌ·Îµå ¼¼ºÎ Á¤º¸¸¦ ±â·ÏÇÏ´Â ÇÔ¼ö
+// ë°ì´í„° íŽ˜ì´ë¡œë“œ ì„¸ë¶€ ì •ë³´ë¥¼ ê¸°ë¡í•˜ëŠ” í•¨ìˆ˜
 void LogData(unsigned char* buffer, int size)
 {
     int i, j;
     for (i = 0; i < size; i++) { 
-        // µ¥ÀÌÅÍ ÆäÀÌ·Îµå´Â ÇÑ ÁÙ¿¡ 16¹ÙÀÌÆ®¾¿ Ãâ·Â
-        // µû¶ó¼­ ÇÑ ÁÙ¿¡ 16¹ÙÀÌÆ®¾¿ Ãâ·ÂµÇµµ·Ï ¼³Á¤
+        // ë°ì´í„° íŽ˜ì´ë¡œë“œëŠ” í•œ ì¤„ì— 16ë°”ì´íŠ¸ì”© ì¶œë ¥
+        // ë”°ë¼ì„œ í•œ ì¤„ì— 16ë°”ì´íŠ¸ì”© ì¶œë ¥ë˜ë„ë¡ ì„¤ì •
         if (i != 0 && i % 16 == 0) { 
 
             for (j = i - 16; j < i; j++) {
@@ -308,28 +309,28 @@ void LogData(unsigned char* buffer, int size)
                     fprintf(logfile, " %c", (unsigned char)buffer[j]);
                 }
                 else {
-                    // µ¥ÀÌÅÍ ÆäÀÌ·Îµå ¹ÙÀÌÆ®°¡ ºñ¾îÀÖÀ¸¸é °ø¹é Ã³¸®
+                    // ë°ì´í„° íŽ˜ì´ë¡œë“œ ë°”ì´íŠ¸ê°€ ë¹„ì–´ìžˆìœ¼ë©´ ê³µë°± ì²˜ë¦¬
                     fprintf(logfile, " *");
                 }
             }
-            // 16¹ÙÀÌÆ®¸¦ ¸ðµÎ Ãâ·ÂÇÑ ÀÌÈÄ ´ÙÀ½ ÁÙ·Î ÀÌµ¿
+            // 16ë°”ì´íŠ¸ë¥¼ ëª¨ë‘ ì¶œë ¥í•œ ì´í›„ ë‹¤ìŒ ì¤„ë¡œ ì´ë™
             fprintf(logfile, "\t\n");
         }
 
         if (i % 16 == 0) {
             fprintf(logfile, " ");
         }
-        // µ¥ÀÌÅÍ ÆäÀÌ·Îµå ¾ç½Ä¿¡ ¸Â°Ô 2ÀÚ¸® 16Áø¼ö·Î Ç¥ÇöÇÏ¿© ¹ÙÀÌÆ® ÄÚµå Ãâ·Â
-        // µ¥ÀÌÅÍÀÇ °¡µ¶¼ºÀ» ³ôÀÌ±â À§ÇØ ³ÖÀº ÄÚµå
+        // ë°ì´í„° íŽ˜ì´ë¡œë“œ ì–‘ì‹ì— ë§žê²Œ 2ìžë¦¬ 16ì§„ìˆ˜ë¡œ í‘œí˜„í•˜ì—¬ ë°”ì´íŠ¸ ì½”ë“œ ì¶œë ¥
+        // ë°ì´í„°ì˜ ê°€ë…ì„±ì„ ë†’ì´ê¸° ìœ„í•´ ë„£ì€ ì½”ë“œ
         fprintf(logfile, " %02X", (unsigned int)buffer[i]);
 
         if (i == size - 1) {
             for (j = 0; j < 15 - i % 16; j++) {
-                // °¡µ¶¼º ³ôÀº Á¤·ÄµÈ Ãâ·ÂÀ» »ý¼ºÇÏ±â À§ÇØ ¿©¹é Ãß°¡
+                // ê°€ë…ì„± ë†’ì€ ì •ë ¬ëœ ì¶œë ¥ì„ ìƒì„±í•˜ê¸° ìœ„í•´ ì—¬ë°± ì¶”ê°€
                 fprintf(logfile, "  "); 
             }
 
-            // ¸¶Áö¸· ÁÙÀÇ ¹®ÀÚ Ãâ·Â
+            // ë§ˆì§€ë§‰ ì¤„ì˜ ë¬¸ìž ì¶œë ¥
             for (j = i - i % 16; j <= i; j++) {
                 if (buffer[j] >= 32 && buffer[j] <= 128) {
                     fprintf(logfile, " %c", (unsigned char)buffer[j]);
@@ -368,7 +369,7 @@ int main(int argc, char* argv[])
 
     unsigned char* buffer = (unsigned char*)malloc(BUFFER_SIZE);
 
-    // »ç¿ëÀÚ°¡ ¼±ÅÃÇÑ Protocol¿¡ ±â¹ÝÇÏ¿© ·Î±× ÆÄÀÏÀ» ¿­°í ÆÐÅ¶ Á¤º¸¸¦ ÀÛ¼º
+    // ì‚¬ìš©ìžê°€ ì„ íƒí•œ Protocolì— ê¸°ë°˜í•˜ì—¬ ë¡œê·¸ íŒŒì¼ì„ ì—´ê³  íŒ¨í‚· ì •ë³´ë¥¼ ìž‘ì„±
     if (!strcmp(p_port, "icmp")) {
         logfile = fopen("log_icmp.txt", "w");
         printf("log_icmp.txt Writing\n");
@@ -408,7 +409,7 @@ int main(int argc, char* argv[])
         printf("Unknown Error \n");
         return 1;
     }
-    // AF_PACKET, SOCK_RAW ¸¦ »ç¿ëÇÏ¿© ¼ÒÄÏ ÃÊ±âÈ­ (Layer 2±îÁö Á¶ÀÛ °¡´É)
+    // AF_PACKET, SOCK_RAW ë¥¼ ì‚¬ìš©í•˜ì—¬ ì†Œì¼“ ì´ˆê¸°í™” (Layer 2ê¹Œì§€ ì¡°ìž‘ ê°€ëŠ¥)
     sock_raw = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
     if (sock_raw < 0) {
         printf("socket init failed\n");
