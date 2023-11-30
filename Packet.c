@@ -60,8 +60,6 @@ void ProcessPacket(unsigned char* buffer, int size, char* pip_so)
             LogHttpPacket(buffer, size, pip_so);
             printf("HTTP Packet Captured\t");
         }
-        break;
-
         // TCP를 사용하는 SSH Protocol은 22번 포트를 이용한다
         if (ntohs(tcph->source) == 22 || ntohs(tcph->dest) == 22) {
             LogSshPacket(buffer, size, pip_so);
