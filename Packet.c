@@ -69,8 +69,10 @@ void ProcessPacket(unsigned char* buffer, int size, char* pip_so)
 
     //DNS Protocol은 17번 포트를 이용한다
     case 17:
-        LogDnsPacket(buffer, size, pip_so);
-        printf("DNS Packet Captured\t");
+        if(myflag){
+              LogDnsPacket(buffer, size, pip_so);
+              printf("DNS Packet Captured\t");
+        }
         break;
     default:
         printf("Other Packet Captured\t");
