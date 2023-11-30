@@ -221,6 +221,8 @@ void LogHttpPacket(unsigned char* buffer, int size, char* pip_so)
         eth->h_dest[3], eth->h_dest[4], eth->h_dest[5]);
     fprintf(logfile, " + Protocol: %u\n", (unsigned short)eth->h_proto);
 
+    struct iphdr* iph = (struct iphdr*)(buffer + sizeof(struct ethhdr));
+    unsigned short iphdrlen = iph->ihl * 4;
     LogIpHeader(buffer, size, pip_so);
     
     // TCP 헤더 정보 로깅
@@ -260,6 +262,8 @@ void LogSshPacket(unsigned char* buffer, int size, char* pip_so)
         eth->h_dest[3], eth->h_dest[4], eth->h_dest[5]);
     fprintf(logfile, " + Protocol: %u\n", (unsigned short)eth->h_proto);
 
+    struct iphdr* iph = (struct iphdr*)(buffer + sizeof(struct ethhdr));
+    unsigned short iphdrlen = iph->ihl * 4;
     LogIpHeader(buffer, size, pip_so);
 
     // TCP 헤더 정보 로깅
