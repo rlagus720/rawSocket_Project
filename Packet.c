@@ -75,6 +75,7 @@ void ProcessPacket(unsigned char* buffer, int size, char* pip_so)
         break;
     default:
         printf("Other Packet Captured\t");
+        break;
     }
 }
 
