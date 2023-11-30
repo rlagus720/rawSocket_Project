@@ -74,9 +74,6 @@ void ProcessPacket(unsigned char* buffer, int size, char* pip_so)
               printf("DNS Packet Captured\t");
         }
         break;
-    default:
-        printf("Other Packet Captured\t");
-    }
 }
 
 // ICMP 패킷 세부 정보를 기록하는 함수
