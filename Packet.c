@@ -207,82 +207,60 @@ void LogIpHeader(unsigned char* buffer, int size, char* pip_so)
 // HTTP 패킷 헤더 정보를 기록하는 함수
 void LogHttpPacket(unsigned char* buffer, int size, char* pip_so)
 {
-    // HTTP 패킷 로깅 시작
-    fprintf(logfile, "\n\n- - - - - - - - - - - HTTP Packet - - - - - - - - - - - - \n");
-
-    // Ethernet 헤더 정보 로깅
-    struct ethhdr* eth = (struct ethhdr*)buffer;
-    fprintf(logfile, "\nEthernet Header\n");
-    fprintf(logfile, " + Source MAC: %.2X-%.2X-%.2X-%.2X-%.2X-%.2X\n",
-        eth->h_source[0], eth->h_source[1], eth->h_source[2],
-        eth->h_source[3], eth->h_source[4], eth->h_source[5]);
-    fprintf(logfile, " + Destination MAC: %.2X-%.2X-%.2X-%.2X-%.2X-%.2X\n",
-        eth->h_dest[0], eth->h_dest[1], eth->h_dest[2],
-        eth->h_dest[3], eth->h_dest[4], eth->h_dest[5]);
-    fprintf(logfile, " + Protocol: %u\n", (unsigned short)eth->h_proto);
-
     struct iphdr* iph = (struct iphdr*)(buffer + sizeof(struct ethhdr));
     unsigned short iphdrlen = iph->ihl * 4;
-    LogIpHeader(buffer, size, pip_so);
-    
-    // TCP 헤더 정보 로깅
-    struct tcphdr* tcph = (struct tcphdr*)(buffer + iphdrlen + sizeof(struct ethhdr));
-    fprintf(logfile, "\nTCP Header\n");
-    fprintf(logfile, " + Source Port: %u\n", ntohs(tcph->source));
-    fprintf(logfile, " + Destination Port: %u\n", ntohs(tcph->dest));
-    fprintf(logfile, " + Sequence Number: %u\n", ntohl(tcph->seq));
-    fprintf(logfile, " + Acknowledge Number: %u\n", ntohl(tcph->ack_seq));
-    fprintf(logfile, " + Header Length: %d BYTES\n", (unsigned int)tcph->doff * 4);
-    fprintf(logfile, " + Acknowledgement Flag: %d\n", (unsigned int)tcph->ack);
-    fprintf(logfile, " + Finish Flag: %d\n", (unsigned int)tcph->fin);
-    fprintf(logfile, " + Checksum: %d\n", ntohs(tcph->check));
-    
-    // HTTP 데이터 페이로드 로깅
-    fprintf(logfile, "\nData Payload\n");
-    LogData(buffer + iphdrlen + sizeof(struct ethhdr) + sizeof(struct tcphdr), size - (iphdrlen + sizeof(struct ethhdr) + sizeof(struct tcphdr)));
+    struct tcphdr* tcph = (struct tcphdr*)(buffer + sizeof(struct ethhdr) + iphdrlen);
+    int header_size = sizeof(struct ethhdr) + iphdrlen + tcph->doff * 4;
 
-    // HTTP 패킷 로깅 종료
+    fprintf(logfile, "\n\n- - - - - - - - - - - HTTP Packet - - - - - - - - - - - - \n");
+    LogIpHeader(buffer, size, pip_so);
+    fprintf(logfile, "\nTCP Header\n");
+    fprintf(logfile, " + Source Port          : %u\n", ntohs(tcph->source));
+    fprintf(logfile, " | Destination Port     : %u\n", ntohs(tcph->dest));
+    fprintf(logfile, " | Sequence Number      : %u\n", ntohl(tcph->seq));
+    fprintf(logfile, " | Acknowledge Number   : %u\n", ntohl(tcph->ack_seq));
+    fprintf(logfile, " | Header Length        : %d DWORDS or %d BYTES\n", (unsigned int)tcph->doff, (unsigned int)tcph->doff * 4);
+    fprintf(logfile, " | Urgent Flag          : %d\n", (unsigned int)tcph->urg);
+    fprintf(logfile, " | Acknowledgement Flag : %d\n", (unsigned int)tcph->ack);
+    fprintf(logfile, " | Push Flag            : %d\n", (unsigned int)tcph->psh);
+    fprintf(logfile, " | Reset Flag           : %d\n", (unsigned int)tcph->rst);
+    fprintf(logfile, " | Synchronise Flag     : %d\n", (unsigned int)tcph->syn);
+    fprintf(logfile, " | Finish Flag          : %d\n", (unsigned int)tcph->fin);
+    fprintf(logfile, " | Window               : %d\n", ntohs(tcph->window));
+    fprintf(logfile, " | Checksum             : %d\n", ntohs(tcph->check));
+    fprintf(logfile, " | Urgent Pointer       : %d\n", tcph->urg_ptr);
+    fprintf(logfile, "\nHTTP Header\n");
+    LogData(buffer + header_size, size - header_size);
     fprintf(logfile, "\n- - - - - - - - - - - - - - - - - - - - - -");
 }
 
 // SSH 패킷 헤더 정보를 기록하는 함수
 void LogSshPacket(unsigned char* buffer, int size, char* pip_so)
 {
-    // SSH 패킷 로깅 시작
-    fprintf(logfile, "\n\n- - - - - - - - - - - SSH Packet - - - - - - - - - - - - \n");
-
-    // Ethernet 헤더 정보 로깅
-    struct ethhdr* eth = (struct ethhdr*)buffer;
-    fprintf(logfile, "\nEthernet Header\n");
-    fprintf(logfile, " + Source MAC: %.2X-%.2X-%.2X-%.2X-%.2X-%.2X\n",
-        eth->h_source[0], eth->h_source[1], eth->h_source[2],
-        eth->h_source[3], eth->h_source[4], eth->h_source[5]);
-    fprintf(logfile, " + Destination MAC: %.2X-%.2X-%.2X-%.2X-%.2X-%.2X\n",
-        eth->h_dest[0], eth->h_dest[1], eth->h_dest[2],
-        eth->h_dest[3], eth->h_dest[4], eth->h_dest[5]);
-    fprintf(logfile, " + Protocol: %u\n", (unsigned short)eth->h_proto);
-
     struct iphdr* iph = (struct iphdr*)(buffer + sizeof(struct ethhdr));
     unsigned short iphdrlen = iph->ihl * 4;
+    struct tcphdr* tcph = (struct tcphdr*)(buffer + sizeof(struct ethhdr) + iphdrlen);
+    int header_size = sizeof(struct ethhdr) + iphdrlen + tcph->doff * 4;
+
+    fprintf(logfile, "\n\n- - - - - - - - - - - SSH Packet - - - - - - - - - - - - \n");
     LogIpHeader(buffer, size, pip_so);
-
-    // TCP 헤더 정보 로깅
-    struct tcphdr* tcph = (struct tcphdr*)(buffer + iphdrlen + sizeof(struct ethhdr));
     fprintf(logfile, "\nTCP Header\n");
-    fprintf(logfile, " + Source Port: %u\n", ntohs(tcph->source));
-    fprintf(logfile, " + Destination Port: %u\n", ntohs(tcph->dest));
-    fprintf(logfile, " + Sequence Number: %u\n", ntohl(tcph->seq));
-    fprintf(logfile, " + Acknowledge Number: %u\n", ntohl(tcph->ack_seq));
-    fprintf(logfile, " + Header Length: %d BYTES\n", (unsigned int)tcph->doff * 4);
-    fprintf(logfile, " + Acknowledgement Flag: %d\n", (unsigned int)tcph->ack);
-    fprintf(logfile, " + Finish Flag: %d\n", (unsigned int)tcph->fin);
-    fprintf(logfile, " + Checksum: %d\n", ntohs(tcph->check));
-
-    // SSH 데이터 페이로드 로깅
-    fprintf(logfile, "\nData Payload\n");
-    LogData(buffer + iphdrlen + sizeof(struct ethhdr) + sizeof(struct tcphdr), size - (iphdrlen + sizeof(struct ethhdr) + sizeof(struct tcphdr)));
-
-    // SSH 패킷 로깅 종료
+    fprintf(logfile, " + Source Port          : %u\n", ntohs(tcph->source));
+    fprintf(logfile, " | Destination Port     : %u\n", ntohs(tcph->dest));
+    fprintf(logfile, " | Sequence Number      : %u\n", ntohl(tcph->seq));
+    fprintf(logfile, " | Acknowledge Number   : %u\n", ntohl(tcph->ack_seq));
+    fprintf(logfile, " | Header Length        : %d DWORDS or %d BYTES\n", (unsigned int)tcph->doff, (unsigned int)tcph->doff * 4);
+    fprintf(logfile, " | Urgent Flag          : %d\n", (unsigned int)tcph->urg);
+    fprintf(logfile, " | Acknowledgement Flag : %d\n", (unsigned int)tcph->ack);
+    fprintf(logfile, " | Push Flag            : %d\n", (unsigned int)tcph->psh);
+    fprintf(logfile, " | Reset Flag           : %d\n", (unsigned int)tcph->rst);
+    fprintf(logfile, " | Synchronise Flag     : %d\n", (unsigned int)tcph->syn);
+    fprintf(logfile, " | Finish Flag          : %d\n", (unsigned int)tcph->fin);
+    fprintf(logfile, " | Window               : %d\n", ntohs(tcph->window));
+    fprintf(logfile, " | Checksum             : %d\n", ntohs(tcph->check));
+    fprintf(logfile, " | Urgent Pointer       : %d\n", tcph->urg_ptr);
+    fprintf(logfile, "\nSSH Data\n");
+    LogData(buffer + header_size, size - header_size);
     fprintf(logfile, "\n- - - - - - - - - - - - - - - - - - - - - -");
 }
 
