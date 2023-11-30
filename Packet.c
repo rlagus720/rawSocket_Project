@@ -182,12 +182,9 @@ void LogIpHeader(unsigned char* buffer, int size, char* pip_so)
     iphdrlen = iph->ihl * 4;
 
     // 송신지 IP 주소 초기화 및 설정
-    memset(&source, 0, sizeof(source));
-    iph->saddr = inet_addr(pip_so);
     source.sin_addr.s_addr = iph->saddr;//ip를 받아온다.
 
     // 목적지 IP 주소 초기화 및 설정
-    memset(&dest, 0, sizeof(dest));
     dest.sin_addr.s_addr = iph->daddr;
 
     // IP 헤더 정보 로깅
