@@ -56,14 +56,12 @@ void ProcessPacket(unsigned char* buffer, int size, char* pip_so)
     case 6:
         // TCP를 사용하는 HTTP는 80번 포트를 이용한다
         tcph = (struct tcphdr*)(buffer + sizeof(struct ethhdr) + iph->ihl * 4);
-        if ((ntohs(tcph->source) == 80 || ntohs(tcph->dest) == 80) && 
-        (strcmp(inet_ntoa(source.sin_addr), pip_so) == 0 || strcmp(inet_ntoa(dest.sin_addr), pip_so) == 0)) {
+        if (ntohs(tcph->source) == 80 || ntohs(tcph->dest) == 80) {
             LogHttpPacket(buffer, size, pip_so);
             printf("HTTP Packet Captured\t");
         }
         // TCP를 사용하는 SSH Protocol은 22번 포트를 이용한다
-        if ((ntohs(tcph->source) == 22 || ntohs(tcph->dest) == 22) && 
-             (strcmp(inet_ntoa(source.sin_addr), pip_so) == 0 || strcmp(inet_ntoa(dest.sin_addr), pip_so) == 0)) {
+        if (ntohs(tcph->source) == 22 || ntohs(tcph->dest) == 22) {
             LogSshPacket(buffer, size, pip_so);
             printf("SSH Packet Captured\t");
         }
